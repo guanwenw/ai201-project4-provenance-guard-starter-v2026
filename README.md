@@ -39,7 +39,31 @@
 <!-- The path a submission takes, from arriving to the label a reader sees.
      Six or seven steps — this is the trace you wrote in Milestone 1. -->
 
+## What This Does
 
+Provenance Guard is a small backend a writing site could plug into. Here is the
+path a submission takes, from arriving to the label a reader sees:
+
+1. **`POST /submit` arrives** with `{"text": ..., "creator_id": ...}` — the
+   writing and who submitted it.
+2. **The input is checked** — missing, empty, or too-short text is rejected
+   with a 4xx and a rejection log entry, before the model runs.
+3. **A `content_id` is generated** (`uuid`) — the identity `/appeal` will need.
+4. **Signal one reads the text for meaning** (`detector.model_signal`): how
+   predictable it is to a local language model, 0–1, higher = more AI.
+5. **Signal two measures the text as text** (`stylometry.style_signal`):
+   sentence-length spread, word variety, punctuation density, 0–1, higher =
+   more AI.
+6. **The two scores are combined** into one confidence
+   (`scoring.combine_signals`) and turned into a label a reader sees
+   (`scoring.score_to_label`).
+7. **The decision is logged** (`audit.log_decision`) as one JSON line in the
+   append-only audit log, and JSON comes back with `content_id`, `guess`,
+   `confidence`, `label`, and both signal scores.
+
+If the writer thinks the guess is wrong, `POST /appeal` records their reasoning,
+moves the item to `under_review`, and leaves the original decision in the log —
+no automatic re-check, a person is in the loop.
 
 ---
 
