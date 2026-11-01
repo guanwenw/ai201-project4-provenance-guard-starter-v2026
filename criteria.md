@@ -42,63 +42,52 @@ Two things worth knowing before you pick numbers:
   a **miss**.
 
 ---
-## 1.
 
-<!-- Your criterion. It must name a number. -->
+## 1. False positives
+I wrote 10 pieces, at most 1 is labelled high-confidence AI — in each
+of three trials.
 
-
-
-**Why this target:**
-
-
-
----
-
-## 2.
-
-<!-- Your criterion. -->
-
-
-
-**Why this target:**
-
-
+**Why this target:** A wrong accusation costs the writer more than a missed AI text costs
+the site. 1-in-10 is a ceiling that accepts the signal's blind spot but keeps
+usable detection. It must hold all three trials because the model jitters.
 
 ---
 
-## 3.
+## 2. Score spread
+Clearly-AI text scores at least 0.30 higher than clearly-human text on combined
+confidence — in each of three trials.
 
-<!-- Your criterion. -->
-
-
-
-**Why this target:**
-
-
+**Why this target:** If the two ends don't separate, labels are assigned on noise. 0.30 is
+the floor for "the signals do something", not a claim about accuracy.
 
 ---
 
-## 4.
+## 3. Label coverage
+All three labels (human / unsure / AI) appear at least once across the test
+inputs — in each of three trials.
 
-<!-- Your criterion. -->
-
-
-
-**Why this target:**
-
-
+**Why this target:** An unreachable label is a product state that doesn't exist. This
+forces the score distribution to actually spread.
 
 ---
 
-## 5.
+## 4. Appeal path
+Every appeal on a real content_id (5 of 5) adds an `under_review` log entry and
+leaves the original decision intact — in each of three trials.
 
-<!-- Your criterion. -->
+**Why this target:** The appeal is the only thing between a wrong accusation and no
+recourse. Append-only means the original stays visible. 5-of-5 because a failed
+appeal is catastrophic for that writer. *Tested by hand.*
 
+---
 
+## 5. Bad input
+Missing text, empty text, null text, and 50,000-word text each return 4xx (never
+5xx) and write a `rejected` log entry — in each of three trials.
 
-**Why this target:**
-
-
+**Why this target:** Crashing on malformed input is a common real failure and Unit 8's
+attack set targets it. 4xx means "refused", not "fell over". Logging matters
+because an attack that only shows as an absence is never found.
 
 ---
 
