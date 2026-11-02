@@ -36,11 +36,6 @@
 
 ## What This Does
 
-<!-- The path a submission takes, from arriving to the label a reader sees.
-     Six or seven steps — this is the trace you wrote in Milestone 1. -->
-
-## What This Does
-
 Provenance Guard is a small backend a writing site could plug into. Here is the
 path a submission takes, from arriving to the label a reader sees:
 
@@ -69,67 +64,81 @@ no automatic re-check, a person is in the loop.
 
 ## Signals and Scoring
 
-<!-- For each signal: what property it measures, why that might differ between
-     human and AI writing, and WHAT IT CAN'T SEE.
+### Signal one — the model signal, `scoring.py::combine_signals`
 
-     The blind spot is not optional. If you can't name it you don't understand
-     the signal yet — and unit 8's attack set is built out of blind spots. -->
+**What it measures:** text predictability (perplexity) using a local language model.
+Lower perplexity → higher AI score. Direction: higher = more likely AI.
 
-### Signal one — the model signal
+**Why that might differ between human and AI writing:** generated text tends to use high-probability word choices;
+human writing contains more unexpected turns and specific phrasing.
 
-**What it measures:**
+**What it can't see:** predictability is not authorship. Plain, short-sentence writing
+— common in second-language writing or deliberately simple prose — scores as
+machine-like. Conversely, dense prose with rare vocabulary often scores as
+human. The signal is structurally biased against writers with the least room to
+argue back.
 
-**Why that might differ between human and AI writing:**
+### Signal two — the style signal, `stylometry.style_signal`
 
-**What it can't see:**
+**What it measures:** structural features only — sentence-length spread (stdev / mean),
+type-token ratio, punctuation density. Direction after normalisation: higher =
+more likely AI.
 
-### Signal two — the style signal
+**Why that might differ between human and AI writing:** generated prose trends toward uniform sentence length and
+narrower vocabulary; human writing is more variable.
 
-**What it measures:**
-
-**Why that might differ between human and AI writing:**
-
-**What it can't see:**
+**What it can't see:** it cannot read. Any change to shape without change to substance
+— typos, fragmented sentences, inserted quotations — moves the score. It is
+cheap to manipulate and degrades on longer texts.
 
 ### The combining rule
 
 <!-- Write the rule in words, then give the numbers. What happens when the two
      signals disagree? -->
 
-**The rule:**
+**The rule:** weighted average of the two signals, with a disagreement pull. Model
+signal weight 0.6; style signal weight 0.4. When the two differ by more than
+0.4, the combined score is pulled 20% toward 0.5.
 
-**The numbers:**
+**The numbers:** `WEIGHT_MODEL_SIGNAL = 0.6`, `WEIGHT_STYLE_SIGNAL = 0.4`,
+disagreement threshold `0.4`, pull `0.2`.
 
-**Where it lives:** `scoring.py::combine_signals`
+**Where it lives:** plain-human short text scored model 0.8311 / style 0.1985
+(difference 0.63). The weighted average is 0.5781; the disagreement pull moves
+it to 0.5624, producing "unsure" — the correct response when two methods
+disagree strongly.
 
 <!-- ⚠️ The grader checks your code against that line. If your rule lives
      somewhere else, say where. -->
 
-**A case where my two signals split, and what my rule does with it:**
+**A case where my two signals split, and what my rule does with it:** 
 
+a plain, short-sentence paragraph scored model 0.8311 / style 0.2523 — a split of
+0.5788, above the 0.4 threshold. The model found the short, ordinary sentences
+very predictable (high AI score); the style signal found the irregular sentence
+lengths and dense punctuation very human (low AI score). The weighted average
+would be 0.5996, but because the two disagree by more than 0.4 the rule pulls it
+20% toward 0.5, landing at 0.5797 — "unsure", the honest answer when the two
+methods disagree this hard.
 
+**Calibration (Unit 7):** four calibration inputs produced confidence values of
+0.34–0.52. The clear-AI vs clear-human gap was below the M2 criterion 2 target
+of 0.30. The style signal assigns relatively high AI scores to human-leaning
+text, compressing the gap. Recorded here; Unit 8 diagnoses and addresses it
 
 ---
 
 ## Label Variants
 
-<!-- The exact text of all three labels, as a reader would see them, and the
-     score range each covers.
-
-     Write them for someone who has never heard the word "threshold". -->
-
-| Label | Score range | The exact text a reader sees |
+| Label | Score range | Reader-facing text |
 |---|---|---|
-| high-confidence human |  |  |
-| unsure |  |  |
-| high-confidence AI |  |  |
+| high-confidence human | 0.00 – 0.35 | "This writing looks like a person wrote it." |
+| unsure | 0.35 – 0.65 | "We can't tell whether a person or a machine wrote this, so we're not labelling it either way." |
+| high-confidence AI | 0.65 – 1.00 | "This writing looks machine-generated to us." |
 
-**Why I worded the "unsure" one this way:**
-<!-- It's the hardest of the three. It has to admit uncertainty without
-     sounding like an accusation, because the person reading it may well have
-     written every word themselves. -->
-
-
+**Why I worded the "unsure" one this way:** the label must acknowledge uncertainty without
+implying suspicion. "We can't tell ... so we're not labelling it either way"
+places the limitation on the system, not the writer.
 
 ---
 
@@ -148,11 +157,18 @@ no automatic re-check, a person is in the loop.
 ```bash
 $ curl -X POST http://127.0.0.1:5000/submit \
   -H "Content-Type: application/json" \
-  -d '{"text": "...", "creator_id": "..."}'
+  -d '{"text":"Remote work has reshaped how teams communicate. Managers must establish clear expectations around availability and response times. Regular check-ins help maintain alignment without creating unnecessary meetings. Teams that document decisions well tend to coordinate more smoothly across time zones.","creator_id":"m5_reviewer"}'
 ```
 
 ```json
-
+{
+  "confidence": 0.3673,
+  "content_id": "c0ef60b2-cbe8-4cce-986e-86889a70121f",
+  "guess": "unsure",
+  "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+  "model_score": 0.2868,
+  "style_score": 0.4881
+}
 ```
 
 **An appeal**
@@ -160,11 +176,16 @@ $ curl -X POST http://127.0.0.1:5000/submit \
 ```bash
 $ curl -X POST http://127.0.0.1:5000/appeal \
   -H "Content-Type: application/json" \
-  -d '{"content_id": "...", "reasoning": "..."}'
+  -d '{"content_id":"c0ef60b2-cbe8-4cce-986e-86889a70121f","reasoning":"This paragraph is from a report I drafted for work last month. I can send the original document if needed."}'
 ```
 
 ```json
-
+{
+  "content_id": "c0ef60b2-cbe8-4cce-986e-86889a70121f",
+  "message": "Appeal received. A person will review this decision and follow up.",
+  "ok": true,
+  "status": "under_review"
+}
 ```
 
 **What the log shows afterwards**
@@ -174,7 +195,41 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
 ```
 
 ```json
-
+{
+  "count": 3,
+  "entries": [
+    {
+      "combined_score": 0.3673,
+      "content_id": "c0ef60b2-cbe8-4cce-986e-86889a70121f",
+      "creator_id": "m5_reviewer",
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2868,
+      "status": "decided",
+      "style_score": 0.4881,
+      "timestamp": "2026-11-02T02:21:31+00:00"
+    },
+    {
+      "combined_score": 0.3673,
+      "content_id": "491fc438-bef0-40b3-83bb-e5a8aedb9c7d",
+      "creator_id": "m5_reviewer",
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2868,
+      "status": "decided",
+      "style_score": 0.4881,
+      "timestamp": "2026-11-02T02:21:51+00:00"
+    },
+    {
+      "content_id": "c0ef60b2-cbe8-4cce-986e-86889a70121f",
+      "creator_id": "m5_reviewer",
+      "event": "appeal",
+      "reasoning": "This paragraph is from a report I drafted for work last month. I can send the original document if needed.",
+      "status": "under_review",
+      "timestamp": "2026-11-02T02:22:27+00:00"
+    }
+  ]
+}
 ```
 
 ---
@@ -183,15 +238,23 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* help articulating each signal's blind spot and drafting three label
+    texts.
+- *What came back:* an explanation of the model signal's bias toward plain writing and
+    three candidate labels.
+- *What I changed:* retained the blind-spot analysis but rewrote all three labels to
+    remove technical phrasing ("generated by AI", "confidence 0.81"). Final
+    wording is plain sentences a non-technical reader can act on.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* why app.py attempted to reach huggingface.co on startup despite the
+    model being downloaded.
+- *What came back:* confirmation that a separate process does not inherit
+    HF_HUB_OFFLINE set in another terminal.
+- *What I changed:* set HF_HUB_OFFLINE=1 in the terminal that launches app.py, and
+    documented it so Unit 8's run_attacks.py and run_eval.py avoid the same
+    failure. 
 
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 

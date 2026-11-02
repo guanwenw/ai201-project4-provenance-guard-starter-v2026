@@ -15,6 +15,7 @@
       "style_score": 0.4881
     }
 
+
 ## An appeal
 
     $ curl -X POST http://127.0.0.1:5000/appeal \
@@ -102,6 +103,21 @@ The original decision for c0ef60b2-... is still there, and the appeal sits after
 it with status "under_review". The log is append-only: the original was not
 overwritten. Earlier entries still carry the old label wording, which shows the
 log records exactly what was shown at the time.
+
+## A case where the two signals disagree (the disagreement pull fires)
+
+  $ curl -X POST http://127.0.0.1:5000/submit \
+    -H "Content-Type: application/json" \
+    -d '{"text":"I like to walk in the park. The trees are green. The birds sing. It is nice. I go there every day after work.","creator_id":"split_demo"}'
+
+  {
+    "confidence": 0.5797,
+    "content_id": "ba581d9d-85b9-42d1-88d5-7ffa716b4081",
+    "guess": "unsure",
+    "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+    "model_score": 0.8311,
+    "style_score": 0.2523
+  } 
 
 ## Unknown content_id returns 404
 
