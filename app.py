@@ -30,6 +30,7 @@ from flask import Flask, jsonify, request
 
 import audit
 import config
+import detector
 
 app = Flask(__name__)
 
@@ -199,18 +200,47 @@ def submit():
     what should this do when `text` is missing, empty, or enormous? A crash on
     a malformed input is one of the most common real failures there is.
     """
+
     payload = request.get_json(silent=True) or {}
+    text = payload.get("text")
+    creator_id = payload.get("creator_id")
 
-    # TODO: delete this and build the route.
+    if not isinstance(text, str) or not text.strip():
+        audit.log_rejection(creator_id=creator_id or "unknown", reason="empty_or_missing_text")
+        return jsonify({"error": "text is required and must be non-empty"}), 400
+
+    content_id = str(uuid.uuid4())
+
+    try:
+        model_score = detector.model_signal(text)
+    except ValueError as exc:
+        audit.log_rejection(creator_id=creator_id or "unknown", reason=f"unscoreable: {exc}")
+        return jsonify({"error": str(exc)}), 400
+
+    guess = "unsure"
+    label = "PLACEHOLDER label (filled in at Milestone 5)"
+    confidence = model_score
+    style_score = 0.0
+
+    audit.log_decision(
+        content_id=content_id,
+        creator_id=creator_id or "unknown",
+        guess=guess,
+        model_score=model_score,
+        style_score=style_score,
+        combined_score=confidence,
+        label=label,
+        status="decided",
+    )
+
     return jsonify({
-        "error": "not_implemented",
-        "message": "POST /submit isn't built yet — see the TODO in app.py.",
-        "you_sent": {
-            "text_length": len(payload.get("text", "")),
-            "creator_id": payload.get("creator_id"),
-        },
-    }), 501
-
+        "content_id": content_id,
+        "guess": guess,
+        "confidence": confidence,
+        "label": label,
+        "model_score": model_score,
+        "style_score": style_score,
+    })
 
 @app.post("/appeal")
 def appeal():
