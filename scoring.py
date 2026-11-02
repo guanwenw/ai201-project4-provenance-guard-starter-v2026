@@ -1,21 +1,3 @@
-"""
-Turning two numbers into one, and one number into something a person can read.
-← YOU BUILD THIS IN MILESTONES 4 AND 5
-
-Two functions live here, and both are stubs.
-
-`combine_signals` is where your false-positive decision from Milestone 1
-actually gets made. Everything above it — the labels, the appeal path — is
-downstream of a number this function produced.
-
-`score_to_label` is where you stop writing for a machine and start writing for
-a person. A score of 0.62 means nothing to a writer.
-
-⚠️ Your README's **Signals and Scoring** section has to name the file and
-function holding your combining rule. The grader checks your code against what
-you claim, so that line should read `scoring.py::combine_signals`.
-"""
-
 import config
 
 def combine_signals(model_score: float, style_score: float) -> float:
@@ -26,38 +8,15 @@ def combine_signals(model_score: float, style_score: float) -> float:
     return round(max(0.0, min(1.0, combined)), 4)
 
 def score_to_label(score: float) -> tuple[str, str]:
-    """
-    Turn a score into a guess and the text a reader actually sees.
-    ← TODO (Milestone 5)
-
-    Returns:
-        (guess, label_text) — where `guess` is a short machine-readable string
-        like "ai" / "human" / "unsure", and `label_text` is the full sentence
-        shown to a person.
-
-    ⚠️ Write the label text for someone who has never heard the word
-    "threshold".
-
-        ✗ "human, 0.81 confidence"
-        ✓ "We think this was probably written by a person."
-
-    All three labels have to be **reachable**. If no score can produce one of
-    them, your ranges have a gap — and Milestone 5 asks you to submit text that
-    produces each one, which is how you'd find out.
-
-    The hardest one to write is "unsure". It has to admit uncertainty without
-    sounding like an accusation, because the person reading it may well have
-    written every word themselves. Your breakout asks your group what they'd
-    think if they got it on their own work. That question is the whole
-    milestone.
-    """
-    # TODO: replace this — thresholds are in config.py
+    """Turn a score into a guess and the reader-facing label text."""
     if score >= config.AI_THRESHOLD:
-        return "ai", "PLACEHOLDER — write the high-confidence AI label."
+        return "ai", "This writing looks machine-generated to us."
     if score <= config.HUMAN_THRESHOLD:
-        return "human", "PLACEHOLDER — write the high-confidence human label."
-    return "unsure", "PLACEHOLDER — write the unsure label."
-
+        return "human", "This writing looks like a person wrote it."
+    return "unsure", (
+        "We can't tell whether a person or a machine wrote this, so we're "
+        "not labelling it either way."
+    )
 
 def label_ranges() -> list[tuple[str, str]]:
     """
