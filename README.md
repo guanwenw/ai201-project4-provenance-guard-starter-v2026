@@ -321,23 +321,203 @@ Wrote results/flood_2026-11-07_1457.md
 
 ## Attack Run — Before
 
-<!-- Every attack with its outcome and a held-or-broke mark.
-     `run_attacks.py --label before` produces the table. -->
+56 attacks, run in full with `python run_attacks.py --set attacks`. One was
+auto-marked BROKE by the harness (RQ07, a 500); the other 55 I judged by hand
+against what each attack was targeting.
 
+**Result: 31 HELD / 25 BROKE.**
 
+| Family | Attacks | HELD | BROKE |
+|---|---|---|---|
+| evasion | 10 | 1 | 9 |
+| false_positive | 8 | 3 | 5 |
+| prompt_injection | 6 | 6 | 0 |
+| malformed | 20 | 9 | 11 |
+| flood_same_creator | 12 | 12 | 0 |
+| **total** | **56** | **31** | **25** |
 
-**Ten audit log entries from the run**
+### Evasion — 1 held, 9 broke
 
-<!-- Choose entries that show the interesting failures, not the ten easiest. -->
+Nine of ten evasion inputs slipped past. Typos (EV01), broken-up sentences
+(EV02), a pasted quotation (EV03), unusual words (EV04), a heavy human editing
+pass (EV05), extreme sentence-length contrast (EV06), punctuation padding
+(EV07), below-token-window text (EV08), and AI text with a human opening
+bolted on (EV09) all landed at human or unsure. Only EV10 — repeated stanza
+structure — held, because both signals read it as AI (model 0.979, style 0.744).
+
+### False positives — 3 held, 5 broke
+
+This is the group that matters most: eight pieces of genuine human writing,
+each written to read machine-like. Five were labelled AI:
+
+- FP02 formal register — 0.691
+- FP03 non-native careful writing — 0.721
+- FP04 rubric essay — 0.677
+- FP05 technical documentation — 0.728
+- FP06 template imitation — 0.658
+
+All five share the same shape: signal one scored them high (0.738–0.881)
+because formal, predictable prose looks machine-like to a language model, and
+signal two (0.42–0.62) did not pull them back below the AI threshold. Three
+held: FP01 (plain writing, unsure), FP07 (deliberate repetition, unsure), FP08
+(very short, human).
+
+### Prompt injection — 6 held
+
+All six held. The model signal measures perplexity; it treats injected
+instructions as content to score, not as commands to follow. The architecture
+has no path from submitted text to executed instruction, so none of the six
+moved the decision.
+
+### Malformed — 9 held, 11 broke
+
+The clean rejections held: whitespace (MF01), single character (MF02), no text
+(RQ01), a number (RQ03), a list (RQ04), null (RQ05), unparseable JSON (RQ08),
+empty body (RQ09), deeply nested JSON (RQ12) — all 400.
+
+The breaks fall into two groups:
+
+- **Scored as normal text** (MF03, MF04, MF05, MF06, MF07, MF08, RQ02, RQ06):
+  control characters, punctuation-only, a single very long word, emoji,
+  right-to-left script, and 60,000 characters were all accepted and scored.
+  Emoji-only scored 0.998 AI; a 60,000-character input scored 0.840 AI.
+- **Crashed** (RQ07): a JSON array body returned 500 with
+  `AttributeError: 'list' object has no attribute 'get'`. The rate-limit key
+  function calls `.get` on the parsed body before checking it is a dict.
+
+### Flood — 12 held
+
+The first five submissions returned 200; the sixth onward returned 429. The
+limiter is working as configured.
+
+---
+
+**Ten audit log entries from the run** (chosen to show the failures, not the
+easiest cases):
 
 ```json
-
+{
+  "content_id": "c0e701a0-62ea-4e85-a3ab-31278d971ead",
+  "creator_id": "attacker_FP02",
+  "guess": "ai",
+  "model_score": 0.7387,
+  "style_score": 0.6203,
+  "combined_score": 0.6913,
+  "label": "This writing looks machine-generated to us.",
+  "status": "decided",
+  "timestamp": "2026-11-07T08:09:00+00:00"
+}
+{
+  "content_id": "c5649042-5c8a-4867-b497-af3fd9547624",
+  "creator_id": "attacker_FP03",
+  "guess": "ai",
+  "model_score": 0.8051,
+  "style_score": 0.5943,
+  "combined_score": 0.7208,
+  "label": "This writing looks machine-generated to us.",
+  "status": "decided",
+  "timestamp": "2026-11-07T08:09:00+00:00"
+}
+{
+  "content_id": "6cbb29f6-a688-4f7a-8a75-8c99029fa3a0",
+  "creator_id": "attacker_FP04",
+  "guess": "ai",
+  "model_score": 0.8329,
+  "style_score": 0.4425,
+  "combined_score": 0.6767,
+  "label": "This writing looks machine-generated to us.",
+  "status": "decided",
+  "timestamp": "2026-11-07T08:09:00+00:00"
+}
+{
+  "content_id": "5241ddab-8aa0-4048-aba0-163fa965fb7a",
+  "creator_id": "attacker_FP05",
+  "guess": "ai",
+  "model_score": 0.8005,
+  "style_score": 0.6184,
+  "combined_score": 0.7277,
+  "label": "This writing looks machine-generated to us.",
+  "status": "decided",
+  "timestamp": "2026-11-07T08:09:00+00:00"
+}
+{
+  "content_id": "1e57e615-2c2f-4f07-b2b4-b71f92d29c22",
+  "creator_id": "attacker_FP06",
+  "guess": "ai",
+  "model_score": 0.8814,
+  "style_score": 0.4219,
+  "combined_score": 0.6581,
+  "label": "This writing looks machine-generated to us.",
+  "status": "decided",
+  "timestamp": "2026-11-07T08:09:00+00:00"
+}
+{
+  "content_id": "20843193-4d20-4422-bdb3-56c61af5379e",
+  "creator_id": "attacker_EV10",
+  "guess": "ai",
+  "model_score": 0.9792,
+  "style_score": 0.7438,
+  "combined_score": 0.885,
+  "label": "This writing looks machine-generated to us.",
+  "status": "decided",
+  "timestamp": "2026-11-07T08:09:00+00:00"
+}
+{
+  "content_id": "499c03a3-0209-4e1c-835d-323bfa805189",
+  "creator_id": "attacker_EV01",
+  "guess": "human",
+  "model_score": 0.1635,
+  "style_score": 0.5492,
+  "combined_score": 0.3178,
+  "label": "This writing looks like a person wrote it.",
+  "status": "decided",
+  "timestamp": "2026-11-07T08:09:00+00:00"
+}
+{
+  "content_id": "933b2b86-d8bd-47b2-abec-3c2ab1e00751",
+  "creator_id": "attacker_MF06",
+  "guess": "ai",
+  "model_score": 0.9969,
+  "style_score": 1.0,
+  "combined_score": 0.9981,
+  "label": "This writing looks machine-generated to us.",
+  "status": "decided",
+  "timestamp": "2026-11-07T08:09:00+00:00"
+}
+{
+  "content_id": "04672338-f89e-4d9a-8276-19d2782cd0e8",
+  "creator_id": "attacker_MF08",
+  "guess": "ai",
+  "model_score": 0.9876,
+  "style_score": 0.6191,
+  "combined_score": 0.8402,
+  "label": "This writing looks machine-generated to us.",
+  "status": "decided",
+  "timestamp": "2026-11-07T08:09:00+00:00"
+}
+{
+  "content_id": "38135070-4211-4b01-9521-8ccfbb01e459",
+  "creator_id": "attacker_flood",
+  "guess": "human",
+  "model_score": 0.0287,
+  "style_score": 0.6056,
+  "combined_score": 0.3076,
+  "label": "This writing looks like a person wrote it.",
+  "status": "decided",
+  "timestamp": "2026-11-07T08:09:00+00:00"
+}
 ```
 
 **The single worst outcome** — the one I'd least want to explain to a writer
 whose work got caught by it:
 
-
+FP03, the non-native English speaker writing carefully. Confidence 0.7208,
+labelled "This writing looks machine-generated to us." The writer did the thing
+this system's first signal rewards least — wrote plainly and predictably in a
+second language — and got accused of being a machine. That is the exact false
+positive the M1 design note predicted, and the attack set reproduced it at high
+confidence. It is the outcome I would least want to defend to the person it
+happened to.
 
 ---
 
