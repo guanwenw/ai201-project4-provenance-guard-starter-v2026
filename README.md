@@ -599,6 +599,55 @@ the model. The model then scores a repeated token sequence as extremely
 predictable, pushing the score to the AI band. This is the same failure the
 attack set showed in MF08 (60,000 characters scored 0.840 AI).
 
+**Broken attacks — patterns, not 25 separate stories**
+
+The attack set broke 25 times. They fall into three patterns; each is one
+problem, not many.
+
+**Pattern 1 — evasion (9 broke): signal two is moved by shape, signal one by
+vocabulary.** The evasion inputs changed the surface of the text. Typos
+(EV01), broken sentences (EV02), a pasted quotation (EV03), extreme
+sentence-length contrast (EV06), and punctuation padding (EV07) all move
+signal two, because signal two measures shape and cannot read. Unusual words
+(EV04) and below-token-window text (EV08) move signal one instead, because
+perplexity on rare or truncated text is not authorship. A heavy editing pass
+(EV05) and AI text with a human opening (EV09) move both. Stage: signal two,
+with signal one contributing on the vocabulary cases. Mechanism: shape changes
+are cheap, and signal two cannot tell them from authorship — the exact blind
+spot named in Unit 7.
+
+**Pattern 2 — false positives (5 broke): signal one rewards predictable prose,
+and the combining rule does not pull it back.** FP02 formal register, FP03
+non-native careful writing, FP04 rubric essay, FP05 technical documentation,
+and FP06 template imitation all share one property: formal and predictable.
+Signal one scored them 0.74–0.88 because a language model finds that prose easy
+to predict. Signal two scored them 0.42–0.62, not low enough to pull the
+combined score below 0.65. Stage: signal one, with the combining rule failing
+to compensate. Mechanism: predictability is not authorship — the M1 design
+note's prediction, reproduced at high confidence.
+
+**Pattern 3a — malformed scored as normal text (7 broke): the route checks
+presence, not validity.** Control characters (MF03), punctuation-only (MF04), a
+single very long word (MF05), emoji (MF06), right-to-left script (MF07), and
+60,000 characters (MF08), plus a missing creator_id (RQ02) and an object
+creator_id (RQ06), all reached the model. The route rejects missing, empty, and
+too-short text but has no upper bound and no validity check. Stage: the route.
+Mechanism: signal one scores repeated, predictable tokens as extremely AI-like
+— emoji-only scored 0.9969, a repeated word 0.9975 — so the system confidently
+calls garbage machine-generated.
+
+**Pattern 3b — RQ07 crashed (1 broke): a JSON array body returns 500.** Stage:
+the route's rate-limit key function. Mechanism: `rate_limit_key` calls
+`request.get_json(silent=True)` and then `.get("creator_id")` on the result.
+When the body is a JSON array, the parsed value is a list, and a list has no
+`.get`, so the key function raises `AttributeError` before the route can guard
+against it. The `isinstance(payload, dict)` guard exists but runs too late —
+the `.get` call happens first.
+
+Patterns 1 and 2 are the same problem at two ends: signal one cannot tell
+predictable from machine-written, and signal two is cheap to move. Patterns 3a
+and 3b are route-level validation gaps.
+
 ---
 
 ## The Improvement
