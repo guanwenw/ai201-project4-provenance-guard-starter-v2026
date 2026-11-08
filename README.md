@@ -256,6 +256,17 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
     documented it so Unit 8's run_attacks.py and run_eval.py avoid the same
     failure. 
 
+**Moment 3**
+
+- *What I asked for:* whether the body-type check I added actually fixed RQ07,
+  or whether I was reading the after-run too generously.
+- *What came back:* the after-run shows RQ07 at 400 (was 500) and zero
+  auto-marked BROKE (was one) — a number that moved, not an impression.
+- *What I changed:* I scoped the improvement section to that one number and
+  said plainly that the other malformed attacks did not move. The temptation
+  was to describe the whole route as fixed; the honest version says what the
+  change did and what it left alone
+
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 
 ---
@@ -738,6 +749,50 @@ the site's readers and editors: more AI-generated text slips through labelled
 "unsure" and has to be handled by a human. I would make that trade because the
 false positive lands on a real person who has no way to prove authorship,
 while the false negative lands on a platform that can afford review.
+
+
+## What's Still Broken
+
+**MF03–MF08, RQ02, RQ06 — 8 malformed attacks still scored as text.** Control
+characters (MF03), punctuation-only (MF04), a very long single word (MF05),
+emoji (MF06), right-to-left script (MF07), and 60,000 characters (MF08), plus a
+missing creator_id (RQ02) and an object creator_id (RQ06), all reach the model
+and get scored. Emoji-only scored 0.998 AI; a repeated word scored 0.9975. What
+I'd do: reject text that contains no recognisable words, and add an upper bound
+on input length. Why I stopped: my one improvement was the body-type check that
+fixed the RQ07 crash. A validity heuristic is a second, separate change, and it
+carries its own false-positive risk — rejecting stylised, very short, or
+non-Latin legitimate writing.
+
+**Criterion 2 — score spread (MISSED).** The clear-AI vs clear-human gap is
+0.178, short of 0.30. What I'd do: reduce the style signal's weight below 0.4,
+or recalibrate its normalisation so human-leaning text does not sit at
+0.47–0.49. Why I stopped: that is a reweighting improvement, not a route fix,
+and I chose to spend my one change on the crash.
+
+**Criterion 3 — label coverage (MISSED).** Only unsure and human appeared. What
+I'd do: nothing directly — the AI label is unreachable because the score
+distribution does not reach 0.65 reliably. Fixing criterion 2 is the
+prerequisite. Why I stopped: it is downstream of the same signal problem.
+
+**Criterion 5 — bad input (MISSED).** The 50,000-word input still returns 200
+and is scored AI. What I'd do: add the length bound described above. Why I
+stopped: same as the malformed group — one change, chosen for the crash.
+
+**Evasion (9 BROKE) and false positives (5 BROKE) are unchanged.** These are the
+two ends of one signal problem: signal one cannot tell predictable from
+machine-written, and signal two is cheap to move with typos and broken
+sentences. What I'd do: change a signal or a weight. Why I stopped: that is a
+different improvement from the route check I made.
+
+**The trade I'd make if this ran for real:** I would widen the unsure band —
+raise `AI_THRESHOLD` from 0.65 to about 0.75 — so formal, non-native, and plain
+human writing stops being labelled AI. The people who pay for that are the
+site's readers and editors: more AI-generated text slips through as "unsure"
+and has to be handled by a human reviewer. I would make that trade because a
+false positive lands on a real person who cannot prove authorship, while a
+false negative lands on a platform that can afford review.
+
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
