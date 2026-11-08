@@ -157,7 +157,11 @@ def health():
 @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
 
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        audit.log_rejection(creator_id="unknown", reason="body_not_json_object")
+        return jsonify({"error": "request body must be a JSON object"}), 400
+    
     text = payload.get("text")
     creator_id = payload.get("creator_id")
 

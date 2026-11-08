@@ -652,22 +652,55 @@ and 3b are route-level validation gaps.
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** one thing — in `app.py::submit`, the request body is now
+checked to be a JSON object before anything else runs. A body that parses as a
+JSON array (or any non-object) returns 400 with a rejection log entry, instead
+of reaching code that calls `.get` on it.
 
-**Which diagnosis pointed at it:**
+**Which diagnosis pointed at it:** Pattern 3b — RQ07, the only attack the
+harness auto-marked BROKE. A JSON array body returned 500 with
+`AttributeError: 'list' object has no attribute 'get'`. The diagnosis named the
+route, and the mechanism was that the body type was never checked before use.
 
 ### Attack Run — After
 
 <!-- Same format. `run_attacks.py --label after` -->
+56 attacks, **0 auto-marked BROKE** (was 1). Hand-judged: **32 HELD / 24
+BROKE** (was 31 / 25).
 
+| Family | Before HELD/BROKE | After HELD/BROKE |
+|---|---|---|
+| evasion | 1 / 9 | 1 / 9 |
+| false_positive | 3 / 5 | 3 / 5 |
+| prompt_injection | 6 / 0 | 6 / 0 |
+| malformed | 9 / 11 | **10 / 10** |
+| flood_same_creator | 12 / 0 | 12 / 0 |
+| **total** | **31 / 25** | **32 / 24** |
 
+RQ07 after:
 
-**Did it help, and how do I know:**
+```json
+{
+  "id": "RQ07",
+  "status": 400,
+  "content_id": null,
+  "creator_id": null,
+  "guess": null,
+  "confidence": null,
+  "model_score": null,
+  "style_score": null,
+  "label": null,
+  "error": null,
+  "verdict": "HELD"
+}
+```
 
-<!-- Widening the unsure band usually fixes one problem and creates another.
-     Reporting that trade honestly is worth full credit. -->
-
-
+**Did it help, and how do I know:** yes — RQ07 went from 500 (crash) to 400
+(clean rejection), and the harness's auto-BROKE count went from 1 to 0. The
+change fixed exactly the one thing the diagnosis named and nothing else. The
+other malformed attacks (MF03–MF08, RQ02, RQ06) are unchanged: they were never
+crashes, they are inputs that reach the model because the route checks presence
+but not validity. That is a different fix, and I stopped at one.
 
 ---
 
@@ -676,14 +709,35 @@ and 3b are route-level validation gaps.
 <!-- For each attack still getting through and each criterion still missed:
      what you'd do, and why you stopped. -->
 
+**MF03–MF08, RQ02, RQ06 (8 malformed attacks still scored as text).** Control
+characters, punctuation-only, a very long single word, emoji, right-to-left
+script, and 60,000 characters all reach the model and get scored. Emoji-only
+scores 0.998 AI. What I'd do: reject text that contains no recognisable words,
+and cap input length. Why I stopped: those are validity heuristics with their
+own false-positive risk — rejecting stylised or short legitimate writing — and
+they are a second, separate improvement. My one change was the body-type check,
+which fixed the crash.
 
+**Criterion 2 (score spread) and criterion 3 (label coverage) still MISSED.**
+The 0.178 gap and the unreachable AI label are signal-level problems. What I'd
+do: reduce the style signal's weight, or recalibrate its normalisation so
+human-leaning text does not sit at 0.47–0.49. Why I stopped: that is a
+different improvement (reweighting), and it would move the evasion numbers in
+ways I could not measure alongside this one.
 
-**The trade I'd make if this ran for real:**
+**Evasion (9 BROKE) and false positives (5 BROKE) are unchanged.** These are
+the two ends of the same signal problem: signal one cannot tell predictable
+from machine-written, and signal two is cheap to move with typos and broken
+sentences. Fixing either means changing a signal or a weight — not a route
+check.
 
-<!-- Two sentences. Fewer wrong accusations means more AI text getting through.
-     Say which way you'd go and WHO PAYS FOR IT. -->
-
-
+**The trade I'd make if this ran for real:** I would widen the unsure band —
+raise `AI_THRESHOLD` from 0.65 to about 0.75 — so that formal, non-native, and
+plain human writing stops being labelled AI. The people who pay for that are
+the site's readers and editors: more AI-generated text slips through labelled
+"unsure" and has to be handled by a human. I would make that trade because the
+false positive lands on a real person who has no way to prove authorship,
+while the false negative lands on a platform that can afford review.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
