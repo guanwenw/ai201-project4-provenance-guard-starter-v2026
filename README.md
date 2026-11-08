@@ -523,40 +523,81 @@ happened to.
 
 ## Run Log and Verdicts
 
-<!-- Your five criteria across three trials. `run_eval.py --label before`. -->
+Five criteria, three trials each, produced by `run_eval.py::main`
+(`results/run_2026-11-08_0311_before.md`). The first signal runs a model, so
+repeats are expected to differ — here they came out identical across all three
+trials, which says the model is deterministic on this fixed set, not that the
+trials were skipped.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |
+| 1. False positives | ≤ 1 of 10 labelled AI | 1/10 | 1/10 | 1/10 | **MET** |
+| 2. Score spread | AI vs human gap ≥ 0.30 | 0.178 | 0.178 | 0.178 | **MISSED** |
+| 3. Label coverage | all 3 labels appear | 2/3 | 2/3 | 2/3 | **MISSED** |
+| 4. Appeal path | 5 of 5 change status | 5/5 | 5/5 | 5/5 | **MET** |
+| 5. Bad input | 4 of 4 return 4xx | 3/4 | 3/4 | 3/4 | **MISSED** |
 
-**Real output from one trial**, pasted as text, naming the file and function
-that produced it:
+**Real output from one trial** — criterion 1, trial 1, from
+`run_eval.py::main` → `results/run_2026-11-08_0311_before.md`:
 
 ```json
-
+[
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.6818,
+    "model_score": 0.7942,
+    "style_score": 0.5132,
+    "label": "This writing looks machine-generated to us.",
+    "sent": "We have processed your request as a one-time courtesy. Your membership"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.3256,
+    "model_score": 0.2501,
+    "style_score": 0.4389,
+    "label": "This writing looks like a person wrote it.",
+    "sent": "My overall approach has been low key, of course getting owners involve"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.4156,
+    "model_score": 0.4973,
+    "style_score": 0.293,
+    "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+    "sent": "BTW  they did a great job of cleaning up after their work.  However so"
+  }
+]
 ```
 
 **Diagnoses**
 
-<!-- For each miss AND each broken attack: the stage and the mechanism.
+Criterion 2 — score spread (MISSED). The gap is 0.178, short of 0.30.
+Stage: the combining rule plus signal two. Mechanism: signal two gives
+human-leaning text a fairly high AI score — the human email at
+model 0.2528 / style 0.4663, and the plain human at model 0.2538 / style
+0.4873. Both style scores are around 0.47–0.49, well above the model scores,
+so the 0.4-weighted style signal pulls the human side up toward the AI side.
+The two signals disagree on human text, and the weighted average splits the
+difference.
 
-     Your service has five stages: the route, signal one, signal two, the
-     combining rule, and the label mapping.
+Criterion 3 — label coverage (MISSED). Only unsure and human appeared; the
+AI label never fired. Stage: the label mapping, downstream of the same
+separation problem. Mechanism: to reach the AI band a score must exceed 0.65,
+and the highest confidence in this run was 0.6818 on one of my own pieces —
+just over the line. The other inputs sat in the 0.33–0.60 range, so the AI label
+had almost no room to appear. Fixing the separation gap (criterion 2) is the
+prerequisite for criterion 3.
 
-     Not a diagnosis:  "The evasion attacks got through."
-     A diagnosis:      "Four evasion inputs got through. All four had typos
-                        added to AI-generated text. My second signal measures
-                        word variety, and typos raise word variety — so it read
-                        them as more human. My combining rule weights that
-                        signal at 0.6, so it dragged the whole score down."
-
-     Look for a pattern. Five failures on one signal is one problem, not five. -->
-
-
+Criterion 5 — bad input (MISSED). Three of four bad inputs returned 400;
+the 50,000-word input returned 200 and was scored AI (confidence 0.9985). Stage:
+the route. Mechanism: the route validates for missing, empty, and too-short
+text, but has no upper bound on length, so an enormous input goes straight to
+the model. The model then scores a repeated token sequence as extremely
+predictable, pushing the score to the AI band. This is the same failure the
+attack set showed in MF08 (60,000 characters scored 0.840 AI).
 
 ---
 
