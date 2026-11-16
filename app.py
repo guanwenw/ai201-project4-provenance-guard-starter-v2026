@@ -27,7 +27,7 @@ Routes:
 import uuid
 
 from flask import Flask, jsonify, request
-
+import time
 import audit
 import config
 import detector
@@ -156,7 +156,7 @@ def health():
 @app.post("/submit")
 @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
-
+    start = time.perf_counter()
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
         audit.log_rejection(creator_id="unknown", reason="body_not_json_object")
@@ -184,7 +184,7 @@ def submit():
     combined = scoring.combine_signals(model_score, style_score)
     confidence = combined
     guess, label = scoring.score_to_label(confidence)
-
+    duration_ms = round((time.perf_counter() - start) * 1000, 1)
     audit.log_decision(
         content_id=content_id,
         creator_id=creator_id or "unknown",
@@ -194,6 +194,8 @@ def submit():
         combined_score=confidence,
         label=label,
         status="decided",
+        duration_ms=duration_ms,
+        request_bytes=len(text),
     )
 
     return jsonify({

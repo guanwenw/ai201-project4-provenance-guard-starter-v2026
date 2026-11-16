@@ -6,6 +6,21 @@ This is a **web service**. It runs on your machine and you talk to it with
 `curl` from another terminal. If you've not built a backend before, that's
 assumed — the starter ships one that already answers.
 
+## Path B — local, with logs
+
+This service loads a local language model and does not fit a 512 MB free host.
+
+**Environment:** Python 3.13; `pip install -r requirements.txt`; `gpt2`
+(~550 MB) downloaded once by `python detector.py`.
+
+**First-time setup:**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python detector.py
+
 ---
 
 ## Before your first class
