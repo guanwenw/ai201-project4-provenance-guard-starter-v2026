@@ -1074,3 +1074,40 @@ seconds — in each of three trials.
 reproduce it. 60 seconds covers the model load (~5 s warm cache, ~20 s cold)
 plus margin. If starting the service needs knowledge not in RUNNING.md, the run
 path has failed.
+
+## Run Log and Verdicts
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. Log has duration+size | 10/10 | 10/10 | 10/10 | 10/10 | **MET** |
+| 2. Warm latency < 200 ms | 9/10 | 10/10 | 10/10 | 10/10 | **MET** |
+| 3. Avg cost 30–100 ms | band | 50.4 | 56.2 | 52.5 | **MET** |
+| 4. Bad input 4xx + logged | 3/3 | 2/3 | 2/3 | 2/3 | **MISSED** |
+| 5. Starts from RUNNING.md < 60s | 60s | 0s | 0s | 0s | **MET** |
+
+**Real output** — criterion 1, trial 1, from `app.py::submit` writing to
+`logs/audit.jsonl`:
+
+```json
+{
+  "combined_score": 0.4358,
+  "content_id": "1874bb3f-6e2c-4492-8e6d-827157711517",
+  "creator_id": "u9_t1_1",
+  "duration_ms": 48.6,
+  "guess": "unsure",
+  "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+  "model_score": 0.2477,
+  "request_bytes": 293,
+  "status": "decided",
+  "style_score": 0.6779,
+  "timestamp": "2026-11-16T04:11:05+00:00"
+}
+```
+
+## Diagnoses
+
+**Criterion 4 — bad input (MISSED).** Two of three bad inputs returned 400; the
+10,001-character input returned 200 and was scored AI (0.9186). Stage: the
+route. Mechanism: submit() checks for missing and too-short text but has no
+upper bound on length, so a very long input reaches the model and is scored as
+extremely predictable. Fix: add a MAX_TEXT_LENGTH check before the model runs.
