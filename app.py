@@ -169,6 +169,15 @@ def submit():
         audit.log_rejection(creator_id=creator_id or "unknown", reason="empty_or_missing_text")
         return jsonify({"error": "text is required and must be non-empty"}), 400
 
+    MAX_TEXT_LENGTH = 10000
+    if len(text) > MAX_TEXT_LENGTH:
+        audit.log_rejection(
+            creator_id=creator_id or "unknown",
+            reason="text_too_long",
+            length=len(text),
+        )
+        return jsonify({"error": f"text must be under {MAX_TEXT_LENGTH} characters"}), 400
+
     content_id = str(uuid.uuid4())
 
     try:

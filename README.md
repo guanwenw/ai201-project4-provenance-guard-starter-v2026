@@ -1111,3 +1111,32 @@ path has failed.
 route. Mechanism: submit() checks for missing and too-short text but has no
 upper bound on length, so a very long input reaches the model and is scored as
 extremely predictable. Fix: add a MAX_TEXT_LENGTH check before the model runs.
+
+## The Improvement
+
+**What I changed:** added a `MAX_TEXT_LENGTH` check in `app.py::submit` — text
+over 10,000 characters returns 400 with a `text_too_long` rejection entry,
+before the model runs.
+
+**Which diagnosis pointed at it:** criterion 4 missed in all three trials. The
+10,001-character input returned 200 and was scored AI (0.9186). Stage: the
+route. Mechanism: `submit()` checked for missing and too-short text but had no
+upper bound on length, so a very long input reached the model and was scored as
+extremely predictable.
+
+### Attack Run — After
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. Log has duration+size | 10/10 | 10/10 | 10/10 | 10/10 | MET |
+| 2. Warm latency < 200 ms | 9/10 | 9/9 | 10/10 | 10/10 | MET |
+| 3. Avg cost 30–100 ms | band | 52.2 | 50.2 | 52.4 | MET |
+| 4. Bad input 4xx + logged | 3/3 | 3/3 | 3/3 | 3/3 | MET |
+| 5. Starts from RUNNING.md < 60s | 60s | 0s | 0s | 0s | MET |
+
+**Did it help, and how do I know:** yes. The 10,001-character input went from
+200 (AI, 0.9186) to 400 with a `text_too_long` rejection entry, and criterion 4
+went from 2/3 MISSED in all three before-trials to 3/3 MET in all three
+after-trials. The other criteria did not change — latency stayed at 50–52 ms and
+the other two bad-input classes were already 400.
+
