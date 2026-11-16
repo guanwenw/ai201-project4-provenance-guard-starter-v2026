@@ -1140,3 +1140,47 @@ went from 2/3 MISSED in all three before-trials to 3/3 MET in all three
 after-trials. The other criteria did not change — latency stayed at 50–52 ms and
 the other two bad-input classes were already 400.
 
+## What It Costs
+
+**Measured per run:** 49.7 ms of compute per warm `/submit`, range 45.7–51.6 ms
+across nine runs.
+
+**Method:** ten identical requests after warm-up; `duration_ms` read from the
+audit log; the first request (4762.8 ms, cold start including model load)
+excluded.
+
+**Hundred-a-day arithmetic:** 100 × 49.7 ms = 4970 ms/day ≈ **5 seconds of
+model time per day** for a 100-writer site.
+
+## What's Still Broken
+
+**Criterion 2's target may be too loose.** Warm latency ran 46–69 ms against a
+200 ms target. What I'd do: tighten it to 100 ms — the data supports it. Why I
+stopped: I spent my one improvement on criterion 4, which was actually missed;
+tightening a passing criterion would have been a second change.
+
+**MF03–MF07, RQ02, RQ06 remain from Unit 8.** The malformed inputs that reach
+the model are still scored as text. Not fixed here because this unit's scope
+was the operational layer, not detection. What I'd do: a validity check for
+text with no recognisable words. Why I stopped: out of scope for Shape A.
+
+**Criterion 4's fix is a length bound, not a validity check.** The 10,001-char
+input is now rejected, but emoji-only, RTL script, and control characters still
+reach the model. What I'd do: reject text that contains no word characters.
+Why I stopped: one improvement, and the length bound was the one the diagnosis
+named.
+
+**What I'd do first if this were real:** measure latency at the input sizes
+real writers submit — 50 to 4,000 words, not a 293-byte paragraph. The cost
+curve at 293 bytes does not tell me what a 2,000-word essay costs.
+
+## How I Used AI
+
+**Moment 1**
+
+- *What I asked for:* which of the four systems to extend and which shape.
+- *What came back:* a comparison of the three shapes; a local-model service
+  fits Shape A on Path B.
+- *What I changed:* kept Shape A on Path B. The arithmetic is mine — 512 MB
+  free tier, 550 MB model — so Path B is the only path that fits. I wrote that
+  arithmetic into the README rather than citing the shape.
