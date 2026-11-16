@@ -858,3 +858,163 @@ instrumentation, and the numbers.
 **Out of scope:** changing signals, weights, thresholds, or labels; adding
 endpoints; fixing Unit 8's remaining detection failures. This unit makes the
 system observable and reproducible, not more accurate.
+
+## Instrumentation
+
+Each `/submit` appends one JSON record to `logs/audit.jsonl` with:
+`timestamp`, `content_id`, `creator_id`, `guess`, `model_score`, `style_score`,
+`combined_score`, `label`, `status`, `duration_ms`, `request_bytes`.
+Rejections carry `event: "rejected"` and a `reason`.
+
+Ten records from a real run:
+
+```json
+{
+  "count": 10,
+  "entries": [
+    {
+      "combined_score": 0.4358,
+      "content_id": "df0da2a9-7cac-4947-91a3-3d7101d1a9da",
+      "creator_id": "u9_cost_1",
+      "duration_ms": 4762.8,
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2477,
+      "request_bytes": 293,
+      "status": "decided",
+      "style_score": 0.6779,
+      "timestamp": "2026-11-16T03:32:02+00:00"
+    },
+    {
+      "combined_score": 0.4358,
+      "content_id": "06ec61e4-9abf-4e55-8a06-f3a97a148069",
+      "creator_id": "u9_cost_2",
+      "duration_ms": 45.7,
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2477,
+      "request_bytes": 293,
+      "status": "decided",
+      "style_score": 0.6779,
+      "timestamp": "2026-11-16T03:32:02+00:00"
+    },
+    {
+      "combined_score": 0.4358,
+      "content_id": "beeee8fa-0eb4-4a51-83b4-7c146609f443",
+      "creator_id": "u9_cost_3",
+      "duration_ms": 51.1,
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2477,
+      "request_bytes": 293,
+      "status": "decided",
+      "style_score": 0.6779,
+      "timestamp": "2026-11-16T03:32:02+00:00"
+    },
+    {
+      "combined_score": 0.4358,
+      "content_id": "a37f6044-b2ce-4d86-b131-869c09f9ec60",
+      "creator_id": "u9_cost_4",
+      "duration_ms": 50.7,
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2477,
+      "request_bytes": 293,
+      "status": "decided",
+      "style_score": 0.6779,
+      "timestamp": "2026-11-16T03:32:02+00:00"
+    },
+    {
+      "combined_score": 0.4358,
+      "content_id": "bca84d45-96ba-4b47-b9c3-b47cbe3b8fce",
+      "creator_id": "u9_cost_5",
+      "duration_ms": 51.6,
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2477,
+      "request_bytes": 293,
+      "status": "decided",
+      "style_score": 0.6779,
+      "timestamp": "2026-11-16T03:32:02+00:00"
+    },
+    {
+      "combined_score": 0.4358,
+      "content_id": "5664eff2-f8e3-4a48-a957-a6cb0b1f6acf",
+      "creator_id": "u9_cost_6",
+      "duration_ms": 49.8,
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2477,
+      "request_bytes": 293,
+      "status": "decided",
+      "style_score": 0.6779,
+      "timestamp": "2026-11-16T03:32:02+00:00"
+    },
+    {
+      "combined_score": 0.4358,
+      "content_id": "fa60bbb4-b634-4aa4-908e-edcb8b4f71f6",
+      "creator_id": "u9_cost_7",
+      "duration_ms": 49.4,
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2477,
+      "request_bytes": 293,
+      "status": "decided",
+      "style_score": 0.6779,
+      "timestamp": "2026-11-16T03:32:02+00:00"
+    },
+    {
+      "combined_score": 0.4358,
+      "content_id": "b6b96a8a-3a38-4d78-973f-b6fe04913458",
+      "creator_id": "u9_cost_8",
+      "duration_ms": 49.4,
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2477,
+      "request_bytes": 293,
+      "status": "decided",
+      "style_score": 0.6779,
+      "timestamp": "2026-11-16T03:32:02+00:00"
+    },
+    {
+      "combined_score": 0.4358,
+      "content_id": "bf2ed447-4043-484a-8f99-5f6c11c280b6",
+      "creator_id": "u9_cost_9",
+      "duration_ms": 50.2,
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2477,
+      "request_bytes": 293,
+      "status": "decided",
+      "style_score": 0.6779,
+      "timestamp": "2026-11-16T03:32:02+00:00"
+    },
+    {
+      "combined_score": 0.4358,
+      "content_id": "0e6dcae3-7b41-4a81-b347-fd1a819ae2dc",
+      "creator_id": "u9_cost_10",
+      "duration_ms": 49.7,
+      "guess": "unsure",
+      "label": "We can't tell whether a person or a machine wrote this, so we're not labelling it either way.",
+      "model_score": 0.2477,
+      "request_bytes": 293,
+      "status": "decided",
+      "style_score": 0.6779,
+      "timestamp": "2026-11-16T03:32:02+00:00"
+    }
+  ]
+}
+
+```
+
+## What It Costs
+
+**Measured per run:** 49.7 ms of compute per warm /submit, range 45.7–51.6 ms
+across nine runs.
+
+**Method:** ten identical requests after warm-up; duration_ms read from the
+audit log; the first request (4762.8 ms, cold start including model load)
+excluded.
+
+**Hundred-a-day arithmetic:** 100 × 49.7 ms = 4970 ms/day ≈ 5 seconds of
+model time per day for a 100-writer site.
