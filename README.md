@@ -830,3 +830,31 @@ false negative lands on a platform that can afford review.
 ---
 
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
+
+<!-- ═══════════════════════ UNIT 9 — THE CAPSTONE ═══════════════════════ -->
+
+## What This Extends
+
+This extends **Provenance Guard**, the text-provenance service built in Units
+7–8: a Flask backend that scores text, returns a confidence and a reader-facing
+label, logs every decision, and accepts appeals.
+
+What is new is the **operational layer**:
+
+- a reproducible run path that starts the service from a clean checkout
+  (Path B — local with logs, because the detector loads a local model and does
+  not fit a 512 MB free host);
+- structured logging with per-request latency;
+- a measured per-run cost.
+
+The signals, weights, thresholds, and label text are unchanged. Detection
+accuracy is out of scope.
+
+## The Shape
+
+**Shape A — Deploy and instrument.** The extension is the run path, the
+instrumentation, and the numbers.
+
+**Out of scope:** changing signals, weights, thresholds, or labels; adding
+endpoints; fixing Unit 8's remaining detection failures. This unit makes the
+system observable and reproducible, not more accurate.
