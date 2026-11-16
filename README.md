@@ -1018,3 +1018,59 @@ excluded.
 
 **Hundred-a-day arithmetic:** 100 × 49.7 ms = 4970 ms/day ≈ 5 seconds of
 model time per day for a 100-writer site.
+
+---
+
+# Unit 9 — Capstone criteria
+
+Five criteria for the operational extension (Shape A: deploy and instrument).
+Three are about the extension; one is about the bad path. Written before any
+results exist.
+
+## 1. Every successful submission logs duration and size
+
+Every successful `/submit` writes one audit entry containing both `duration_ms`
+and `request_bytes` — 10 of 10 in each of three trials.
+
+**Why this target:** a request that was scored but not timed cannot be
+diagnosed later. 10-of-10 is a hard requirement, not "most" — one missing
+record is a blind spot that looks like a quiet period.
+
+## 2. Warm submissions answer under 200 ms
+
+After the model is warm, `/submit` returns with `duration_ms` under 200 ms in at
+least 9 of 10 requests — in each of three trials.
+
+**Why this target:** the measured warm average is 49.7 ms. 200 ms leaves a 4×
+margin for jitter without hiding a real slowdown. 9-of-10 rather than 10-of-10
+because one GC pause should not fail the system. Warm only — cold start
+includes a ~4.8 s model load that is not the steady-state cost.
+
+## 3. Average warm cost stays in a measured band
+
+The average `duration_ms` across ten warm requests falls between 30 and 100 ms
+— in each of three trials.
+
+**Why this target:** 49.7 ms is the baseline. A 30–100 ms band absorbs machine
+and load differences. If the average climbs toward 500 ms, something is
+reloading the model per request — a real failure this criterion should catch.
+
+## 4. Bad input is rejected and logged
+
+Empty text, text over 10,000 characters, and text too short to score each
+return a 4xx and write a `rejected` audit entry with a `reason` — 3 of 3 in each
+of three trials.
+
+**Why this target:** the extension is logging, and the bad path is where
+logging is easiest to miss. A rejected request with no trace looks like it
+never happened. 3-of-3 because every kind of bad input should leave a record.
+
+## 5. The service starts from RUNNING.md alone
+
+Following `RUNNING.md` from a clean environment, `/ping` returns 200 within 60
+seconds — in each of three trials.
+
+**Why this target:** Path B is only worth anything if someone else can
+reproduce it. 60 seconds covers the model load (~5 s warm cache, ~20 s cold)
+plus margin. If starting the service needs knowledge not in RUNNING.md, the run
+path has failed.
